@@ -149,21 +149,21 @@ class Cityscapes_loader(BaseDataset):
 
         img = Image.open(img_path)
         lbl = Image.open(lbl_path)
-        img = img.resize(self.img_size, Image.BILINEAR)
+        img = img.resize(self.img_size, Image.BILINEAR) # cityscapes的数据统一到（1024，2048）
         lbl = lbl.resize(self.img_size, Image.NEAREST)
         
         img = np.array(img, dtype=np.uint8)
         lbl = np.array(lbl, dtype=np.uint8)
-        lbl = self.encode_segmap(np.array(lbl, dtype=np.uint8))
+        lbl = self.encode_segmap(np.array(lbl, dtype=np.uint8)) # 将标签转换为合法值
 
         img_full = img.copy().astype(np.float64)
-        img_full -= self.mean
-        img_full = img_full.astype(float) / 255.0
-        img_full = img_full.transpose(2, 0, 1)
+        img_full -= self.mean    # cityscapes 没有减少
+        img_full = img_full.astype(float) / 255.0  #归一化
+        img_full = img_full.transpose(2, 0, 1)  #通道转换 NHWC -> NCHW
 
         lp, lpsoft, weak_params = None, None, None
         if self.split == 'train' and self.opt.used_save_pseudo:
-            if self.opt.proto_rectify:
+            if self.opt.proto_rectify:  # 加载软的伪标签用于修改
                 lpsoft = np.load(os.path.join(self.opt.path_soft, os.path.basename(img_path).replace('.png', '.npy')))
             else:
                 lp_path = os.path.join(self.opt.path_LP, os.path.basename(img_path))
@@ -185,7 +185,7 @@ class Cityscapes_loader(BaseDataset):
         img, lbl_, lp = self.transform(img, lbl, lp)
                 
         input_dict['img'] = img
-        input_dict['img_full'] = torch.from_numpy(img_full).float()
+        input_dict['img_full'] = torch.from_numpy(img_full).float()  # 归一化+通道转换后数据
         input_dict['label'] = lbl_
         input_dict['lp'] = lp
         input_dict['lpsoft'] = lpsoft
@@ -201,25 +201,17 @@ class Cityscapes_loader(BaseDataset):
         :param img:
         :param lbl:
         """
-        # img = m.imresize(
-        #     img, (self.img_size[0], self.img_size[1])
-        # )  # uint8 with RGB mode
         img = np.array(img)
         # img = img[:, :, ::-1]  # RGB -> BGR
         img = img.astype(np.float64)
         img -= self.mean
         img = img.astype(float) / 255.0
-        # NHWC -> NCHW
-        img = img.transpose(2, 0, 1)
+        img = img.transpose(2, 0, 1) # NHWC -> NCHW
 
         classes = np.unique(lbl)
         lbl = np.array(lbl)
         lbl = lbl.astype(float)
-        # lbl = m.imresize(lbl, (self.img_size[0], self.img_size[1]), "nearest", mode="F")
         lbl = lbl.astype(int)
-
-        if not np.all(classes == np.unique(lbl)):
-            print("WARN: resizing labels yielded fewer classes")    #TODO: compare the original and processed ones
 
         if check and not np.all(np.unique(lbl[lbl != self.ignore_index]) < self.n_classes):   #todo: understanding the meaning 
             print("after det", classes, np.unique(lbl))
@@ -230,10 +222,7 @@ class Cityscapes_loader(BaseDataset):
 
         if lp is not None:
             classes = np.unique(lp)
-            lp = np.array(lp)
-            # if not np.all(np.unique(lp[lp != self.ignore_index]) < self.n_classes):
-            #     raise ValueError("lp Segmentation map contained invalid class values")
-        
+            lp = np.array(lp)    
             lp = torch.from_numpy(lp).long()
 
         return img, lbl, lp

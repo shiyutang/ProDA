@@ -1,6 +1,6 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
-
+# 根据输入图片，获得聚类中心
 import os
 import logging
 import random
@@ -13,14 +13,12 @@ from PIL import Image
 from parser_train import parser_, relative_path_to_absolute_path
 from tqdm import tqdm
 
+from train import set_seed
 from data import create_dataset
 from models import adaptation_modelv2
 
 def calc_prototype(opt, logger):
-    torch.manual_seed(opt.seed)
-    torch.cuda.manual_seed(opt.seed)
-    np.random.seed(opt.seed)
-    random.seed(opt.seed)
+    set_seed(opt)
     ## create dataset
     device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
     datasets = create_dataset(opt, logger) 
@@ -35,7 +33,6 @@ def calc_prototype(opt, logger):
     for epoch in range(opt.epochs):
         for data_i in tqdm(datasets.target_train_loader):  
             model.iter += 1
-            i = model.iter
             source_data = datasets.source_train_loader.next()
             images = source_data['img'].to(device)
             labels = source_data['label'].to(device)
@@ -50,23 +47,32 @@ def calc_prototype(opt, logger):
                         out = model.BaseNet_DP(images, ssl=True)
                     batch, w, h = labels.size()
                     newlabels = labels.reshape([batch, 1, w, h]).float()
-                    newlabels = F.interpolate(newlabels, size=out['feat'].size()[2:], mode='nearest')
-                    vectors, ids = class_features.calculate_mean_vector(out['feat'], out['out'], newlabels, model)
+                    newlabels = F.interpolate(newlabels, size=out['feat'].\
+                                        size()[2:], mode='nearest')
+                    vectors, ids = class_features.calculate_mean_vector(out['feat'], \
+                                        out['out'], newlabels, model)
                     for t in range(len(ids)):
-                        model.update_objective_SingleVector(ids[t], vectors[t].detach().cpu().numpy(), 'mean')
+                        model.update_objective_SingleVector(ids[t], \
+                                        vectors[t].detach().cpu().numpy(), 'mean')
             else: #target
                 with torch.no_grad():
                     if opt.model_name == 'deeplabv2':
-                        out = model.BaseNet_DP(target_image, ssl=True)
-                    vectors, ids = class_features.calculate_mean_vector(out['feat'], out['out'], model=model)
+                        out = model.BaseNet_DP(target_image, ssl=True)  # ssl?
+                    vectors, ids = class_features.calculate_mean_vector(\
+                                    out['feat'], out['out'], model=model) 
                     #vectors, ids = class_features.calculate_mean_vector_by_output(feat_cls, output, model)
                     for t in range(len(ids)):
-                        model.update_objective_SingleVector(ids[t], vectors[t].detach().cpu(), 'mean')
+                        model.update_objective_SingleVector(ids[t], \
+                                        vectors[t].detach().cpu(), 'mean')
 
     if opt.source:
-        save_path = os.path.join(os.path.dirname(opt.resume_path), "prototypes_on_{}_from_{}".format(opt.src_dataset, opt.model_name))
+        save_path = os.path.join(os.path.dirname(opt.resume_path), \
+                    "prototypes_on_{}_from_{}".format(opt.src_dataset, \
+                    opt.model_name))
     else:
-        save_path = os.path.join(os.path.dirname(opt.resume_path), "prototypes_on_{}_from_{}".format(opt.tgt_dataset, opt.model_name))
+        save_path = os.path.join(os.path.dirname(opt.resume_path), \
+                    "prototypes_on_{}_from_{}".format(opt.tgt_dataset,\
+                    opt.model_name))
     torch.save(model.objective_vectors, save_path)
 
 class Class_Features:
@@ -146,7 +152,6 @@ if __name__ == "__main__":
     opt.noaug = True
     opt.noshuffle = True
     opt.epochs = 4
-    #opt.num_workers = 0
 
     print('RUNDIR: {}'.format(opt.logdir))
     if not os.path.exists(opt.logdir):

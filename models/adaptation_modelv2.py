@@ -50,12 +50,16 @@ class CustomModel():
             restore_from= opt.resume_path
             self.best_iou = 0
         if self.opt.student_init == 'imagenet':
-            self.BaseNet = Deeplab(BatchNorm, num_classes=self.class_numbers, freeze_bn=False, restore_from=restore_from)
+            self.BaseNet = Deeplab(BatchNorm, num_classes=self.class_numbers, \
+                                    freeze_bn=False, restore_from=restore_from)
         elif self.opt.student_init == 'simclr':
-            self.BaseNet = Deeplab(BatchNorm, num_classes=self.class_numbers, freeze_bn=False, restore_from=restore_from, 
-                initialization=os.path.join(opt.root, 'Code/ProDA', 'pretrained/simclr/r101_1x_sk0.pth'), bn_clr=opt.bn_clr)
+            self.BaseNet = Deeplab(BatchNorm, num_classes=self.class_numbers, \
+                        freeze_bn=False, restore_from=restore_from, 
+                        initialization=os.path.join(opt.root, 'pretrained/simclr/r101_1x_sk0.pth'), \
+                        bn_clr=opt.bn_clr)
         else:
-            self.BaseNet = Deeplab(BatchNorm, num_classes=self.class_numbers, freeze_bn=False, restore_from=restore_from)
+            self.BaseNet = Deeplab(BatchNorm, num_classes=self.class_numbers, \
+                                    freeze_bn=False, restore_from=restore_from)
             
         logger.info('the backbone is {}'.format(opt.model_name))
 
@@ -78,8 +82,10 @@ class CustomModel():
             self.schedulers.extend([self.DSchedule])
 
         if self.opt.finetune or self.opt.stage == 'warm_up':
-            self.BaseOpti = optimizer_cls([{'params':self.BaseNet.get_1x_lr_params(), 'lr':optimizer_params['lr']},
-                                           {'params':self.BaseNet.get_10x_lr_params(), 'lr':optimizer_params['lr']*10}], **optimizer_params)
+            self.BaseOpti = optimizer_cls([{'params':self.BaseNet.get_1x_lr_params(), \
+                                            'lr':optimizer_params['lr']},
+                                           {'params':self.BaseNet.get_10x_lr_params(), \
+                                            'lr':optimizer_params['lr']*10}], **optimizer_params)
         else:
             self.BaseOpti = optimizer_cls(self.BaseNet.parameters(), **optimizer_params)
         self.optimizers.extend([self.BaseOpti])
@@ -88,13 +94,16 @@ class CustomModel():
         self.schedulers.extend([self.BaseSchedule])
 
         if self.opt.ema:
-            self.BaseNet_ema = Deeplab(BatchNorm, num_classes=self.class_numbers, freeze_bn=False, restore_from=restore_from, bn_clr=opt.ema_bn)
+            self.BaseNet_ema = Deeplab(BatchNorm, num_classes=self.class_numbers, \
+                    freeze_bn=False, restore_from=restore_from, bn_clr=opt.ema_bn)
             self.BaseNet_ema.load_state_dict(self.BaseNet.state_dict().copy())
 
         if self.opt.distillation > 0:
-            self.teacher = Deeplab(BatchNorm, num_classes=self.class_numbers, freeze_bn=False, restore_from=opt.resume_path, bn_clr=opt.ema_bn)
+            self.teacher = Deeplab(BatchNorm, num_classes=self.class_numbers, \
+                    freeze_bn=False, restore_from=opt.resume_path, bn_clr=opt.ema_bn)
             self.teacher.eval()
-            self.teacher_DP = self.init_device(self.teacher, gpu_id=self.default_gpu, whether_DP=True)
+            self.teacher_DP = self.init_device(self.teacher, gpu_id=self.default_gpu, \
+                                                whether_DP=True)
 
 
         self.adv_source_label = 0
@@ -103,12 +112,15 @@ class CustomModel():
             self.bceloss = nn.BCEWithLogitsLoss(size_average=True)
         elif self.opt.gan == 'LS':
             self.bceloss = torch.nn.MSELoss()
-        self.feat_prototype_distance_DP = self.init_device(feat_prototype_distance_module(), gpu_id=self.default_gpu, whether_DP=True)
+        self.feat_prototype_distance_DP = self.init_device(feat_prototype_distance_module(), \
+                                                gpu_id=self.default_gpu, whether_DP=True)
 
-        self.BaseNet_DP = self.init_device(self.BaseNet, gpu_id=self.default_gpu, whether_DP=True)
+        self.BaseNet_DP = self.init_device(self.BaseNet, gpu_id=self.default_gpu, \
+                                            whether_DP=True)
         self.nets_DP.append(self.BaseNet_DP)
         if self.opt.ema:
-            self.BaseNet_ema_DP = self.init_device(self.BaseNet_ema, gpu_id=self.default_gpu, whether_DP=True)
+            self.BaseNet_ema_DP = self.init_device(self.BaseNet_ema, gpu_id=self.default_gpu,\
+                                                     whether_DP=True)
 
     def calculate_mean_vector(self, feat_cls, outputs, labels=None, thresh=None):
         outputs_softmax = F.softmax(outputs, dim=1)

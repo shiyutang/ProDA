@@ -278,7 +278,7 @@ class ResNet101(nn.Module):
             x = self.bn_pretrain(x)
 
         out = self.layer5(x, get_feat=True)
-        # out = dict()
+        # out = dict()   # todo how to get out['feat'] & out['out']
         # out['feat'] = x
         # x = self.layer5(x)
         
@@ -354,7 +354,7 @@ def freeze_bn_func(m):
 
 def Deeplab(BatchNorm, num_classes=21, freeze_bn=False, restore_from=None, initialization=None, bn_clr=False):
     model = ResNet101(Bottleneck, [3, 4, 23, 3], num_classes, BatchNorm, bn_clr=bn_clr)
-    if freeze_bn:
+    if freeze_bn: # 重新映射的参数不再变化
         model.apply(freeze_bn_func)
     if initialization is None:
         pretrain_dict = model_zoo.load_url('https://download.pytorch.org/models/resnet101-5d3b4d8f.pth')

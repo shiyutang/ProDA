@@ -7,7 +7,6 @@ import torch.utils.data
 from data.base_dataset import BaseDataset
 from data.augmentations import *
 from data.DataProvider import DataProvider
-# import data.cityscapes_dataset
 
 def find_dataset_using_name(name):
     """Import the module "data/[dataset_name]_dataset.py".

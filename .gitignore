@@ -130,3 +130,9 @@ dmypy.json
 
 config.py
 submit_ssh.py
+
+# model & data
+pretrained/
+Dataset/
+Pseudo/
+logs/
